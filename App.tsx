@@ -24,9 +24,29 @@ import {
 import { GoogleGenAI } from "@google/genai";
 import { Tool, Frame, PixelProject } from './types';
 
-const STORAGE_KEY = 'pixeai_one_studio_data';
+const STORAGE_KEY = 'pixeai_one_studio_final';
 const DEFAULT_SIZE = 32;
 const INITIAL_COLOR = '#06b6d4';
+
+// Componente para recrear fielmente el logo del robot morado
+const RobotLogo = () => (
+  <div className="relative w-10 h-10 flex flex-col items-center justify-center">
+    {/* Cabeza */}
+    <div className="w-8 h-7 bg-purple-600 rounded-t-lg flex items-center justify-around px-1 relative">
+      {/* Ojos Neón */}
+      <div className="w-2 h-2 bg-green-400 shadow-[0_0_8px_#4ade80]" />
+      <div className="w-2 h-2 bg-green-400 shadow-[0_0_8px_#4ade80]" />
+      {/* Brillo superior */}
+      <div className="absolute top-0.5 left-1 w-6 h-0.5 bg-purple-400 opacity-50" />
+    </div>
+    {/* Cuerpo */}
+    <div className="w-8 h-3 flex gap-1 mt-0.5">
+      <div className="flex-1 bg-purple-800 rounded-bl-sm" />
+      <div className="w-5 bg-purple-700 h-4 -mt-1 rounded-sm shadow-inner" />
+      <div className="flex-1 bg-purple-800 rounded-br-sm" />
+    </div>
+  </div>
+);
 
 const App: React.FC = () => {
   const createDefaultProject = (size: number = DEFAULT_SIZE): PixelProject => ({
@@ -130,21 +150,18 @@ const App: React.FC = () => {
     setErrorLog(null);
     try {
       const apiKey = process.env.API_KEY;
-      if (!apiKey) throw new Error("API_KEY no encontrada en el sistema.");
-      
+      if (!apiKey) throw new Error("API_KEY no detectada. Por favor, verifica tu configuración.");
+
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
-        contents: { parts: [{ text: `Professional pixel art sprite of: ${aiPrompt}. 
-          Centered single character, flat colors, no shading, clean edges, solid white background, 
-          style: 32-bit game asset, clear silhouette.` }] },
+        contents: { parts: [{ text: `Professional pixel art sprite for game: ${aiPrompt}. 
+          Flat colors, 32x32 look, centered, solid white background, sharp edges, no shadows, masterwork game asset.` }] },
         config: { imageConfig: { aspectRatio: "1:1" } }
       });
 
       const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-      if (!part?.inlineData) {
-        throw new Error("La IA no devolvió una imagen. Intenta con otra descripción.");
-      }
+      if (!part?.inlineData) throw new Error("La IA no generó una imagen. Prueba con otra descripción.");
 
       const img = new Image();
       img.src = `data:image/png;base64,${part.inlineData.data}`;
@@ -162,13 +179,9 @@ const App: React.FC = () => {
       
       for(let i=0; i<imageData.length; i+=4) {
         const r = imageData[i], g = imageData[i+1], b = imageData[i+2], a = imageData[i+3];
-        // Detectar blanco o transparencia
-        const isWhite = r > 245 && g > 245 && b > 245;
-        if (a < 128 || isWhite) {
-          newData.push('transparent');
-        } else {
-          newData.push(`#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`);
-        }
+        const isBackground = (r > 240 && g > 240 && b > 240) || a < 128;
+        if (isBackground) newData.push('transparent');
+        else newData.push(`#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`);
       }
 
       setProject(prev => {
@@ -179,8 +192,8 @@ const App: React.FC = () => {
       setIsAiModalOpen(false);
       setAiPrompt('');
     } catch (e: any) {
-      console.error("AI Error:", e);
-      setErrorLog(e.message || "Error desconocido al conectar con la IA.");
+      console.error(e);
+      setErrorLog(e.message || "Error al conectar con el servidor de IA. Revisa tu conexión.");
     } finally {
       setIsGenerating(false);
     }
@@ -226,21 +239,21 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full w-full select-none bg-zinc-950 text-white overflow-hidden">
-      {/* HEADER */}
-      <header className="h-16 border-b border-zinc-900 flex items-center justify-between px-6 bg-zinc-900/50 backdrop-blur-md z-30">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-cyan-600 to-cyan-400 rounded-xl flex items-center justify-center font-black italic shadow-lg shadow-cyan-500/20 text-zinc-950">P</div>
+      {/* HEADER CON LOGO OFICIAL RESTAURADO */}
+      <header className="h-20 border-b border-zinc-900 flex items-center justify-between px-8 bg-zinc-900/60 backdrop-blur-xl z-30">
+        <div className="flex items-center gap-4">
+          <RobotLogo />
           <div className="flex flex-col">
-            <h1 className="font-black text-xl tracking-tighter leading-none">PixeAI</h1>
-            <span className="text-[10px] uppercase font-bold text-cyan-500 tracking-widest">One Studio</span>
+            <h1 className="font-black text-2xl tracking-tighter leading-none text-cyan-400">PixeAI</h1>
+            <span className="text-[12px] uppercase font-bold text-white tracking-[0.2em] opacity-90">One</span>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5">
           <button 
             onClick={() => setIsAiModalOpen(true)} 
-            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 px-5 py-2.5 rounded-xl text-xs font-black transition-all shadow-xl shadow-purple-600/20 active:scale-95 group"
+            className="flex items-center gap-3 bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-2xl text-xs font-black transition-all shadow-xl shadow-purple-600/30 active:scale-95 group"
           >
-            <Sparkles size={16} className="group-hover:rotate-12 transition-transform" /> 
+            <Sparkles size={18} className="group-hover:rotate-12 transition-transform" /> 
             CREAR CON IA
           </button>
           <button 
@@ -250,37 +263,37 @@ const App: React.FC = () => {
               const ctx = canvas.getContext('2d')!;
               currentFrame.data.forEach((c, i) => { if (c!=='transparent') { ctx.fillStyle=c; ctx.fillRect(i%project.width, Math.floor(i/project.width), 1, 1); }});
               const link = document.createElement('a');
-              link.download = "sprite.png"; link.href = canvas.toDataURL(); link.click();
+              link.download = "pixeai_sprite.png"; link.href = canvas.toDataURL(); link.click();
             }} 
-            className="bg-zinc-800 hover:bg-zinc-700 p-2.5 rounded-xl border border-zinc-700 transition-colors" 
-            title="Exportar Sprite"
+            className="bg-zinc-800 hover:bg-zinc-700 p-3 rounded-2xl border border-zinc-700 transition-colors shadow-lg" 
+            title="Exportar"
           >
-            <Download size={20} />
+            <Download size={22} />
           </button>
         </div>
       </header>
 
       <main className="flex-1 flex overflow-hidden">
-        {/* BARRA DE HERRAMIENTAS IZQUIERDA */}
-        <aside className="w-20 border-r border-zinc-900 flex flex-col items-center py-8 gap-6 bg-zinc-900/40">
-          <ToolBtn icon={<Pencil size={22}/>} active={selectedTool==='pen'} onClick={()=>setSelectedTool('pen')} />
-          <ToolBtn icon={<Eraser size={22}/>} active={selectedTool==='eraser'} onClick={()=>setSelectedTool('eraser')} />
-          <ToolBtn icon={<PaintBucket size={22}/>} active={selectedTool==='bucket'} onClick={()=>setSelectedTool('bucket')} />
-          <ToolBtn icon={<Pipette size={22}/>} active={selectedTool==='picker'} onClick={()=>setSelectedTool('picker')} />
-          <div className="h-px w-10 bg-zinc-800" />
-          <div className="w-12 h-12 rounded-2xl border-2 border-zinc-700 relative cursor-pointer shadow-inner overflow-hidden ring-4 ring-black/40" style={{backgroundColor: currentColor}}>
+        {/* BARRA DE HERRAMIENTAS */}
+        <aside className="w-20 border-r border-zinc-900 flex flex-col items-center py-10 gap-8 bg-zinc-900/40">
+          <ToolBtn icon={<Pencil size={24}/>} active={selectedTool==='pen'} onClick={()=>setSelectedTool('pen')} />
+          <ToolBtn icon={<Eraser size={24}/>} active={selectedTool==='eraser'} onClick={()=>setSelectedTool('eraser')} />
+          <ToolBtn icon={<PaintBucket size={24}/>} active={selectedTool==='bucket'} onClick={()=>setSelectedTool('bucket')} />
+          <ToolBtn icon={<Pipette size={24}/>} active={selectedTool==='picker'} onClick={()=>setSelectedTool('picker')} />
+          <div className="h-px w-12 bg-zinc-800" />
+          <div className="w-14 h-14 rounded-2xl border-2 border-zinc-700 relative cursor-pointer shadow-inner overflow-hidden ring-4 ring-black/50 hover:scale-105 transition-transform" style={{backgroundColor: currentColor}}>
              <input type="color" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" value={currentColor} onChange={e=>setCurrentColor(e.target.value)} />
           </div>
         </aside>
 
-        {/* LIENZO CENTRAL */}
+        {/* ÁREA DE DIBUJO */}
         <section className="flex-1 relative flex items-center justify-center p-12 bg-zinc-950 overflow-hidden">
           <div 
-            className={`relative shadow-2xl cursor-crosshair touch-none transition-all duration-300 ${showGrid ? 'dark-pixel-grid' : 'bg-zinc-900'}`}
+            className={`relative shadow-[0_0_100px_rgba(0,0,0,0.5)] cursor-crosshair touch-none transition-all duration-500 ${showGrid ? 'dark-pixel-grid' : 'bg-zinc-900'}`}
             style={{ 
-              width: `${Math.min(window.innerWidth - 450, window.innerHeight - 350) * zoom}px`, 
-              height: `${Math.min(window.innerWidth - 450, window.innerHeight - 350) * zoom}px`,
-              outline: '1px solid #3f3f46'
+              width: `${Math.min(window.innerWidth - 480, window.innerHeight - 380) * zoom}px`, 
+              height: `${Math.min(window.innerWidth - 480, window.innerHeight - 380) * zoom}px`,
+              outline: '1px solid #27272a'
             }}
             onMouseDown={handleCanvasInteraction}
             onMouseMove={e => e.buttons === 1 && handleCanvasInteraction(e)}
@@ -290,28 +303,27 @@ const App: React.FC = () => {
             <canvas ref={canvasRef} width={2048} height={2048} className="w-full h-full image-render-pixel" />
           </div>
           
-          {/* CONTROLES FLOTANTES */}
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-zinc-900/90 border border-zinc-800 p-4 rounded-2xl shadow-2xl backdrop-blur-xl">
-            <button onClick={()=>setZoom(Math.max(0.1, zoom-0.1))} className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"><ChevronLeft size={18}/></button>
-            <span className="text-xs font-black font-mono w-14 text-center text-zinc-400">{Math.round(zoom*100)}%</span>
-            <button onClick={()=>setZoom(Math.min(4, zoom+0.1))} className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"><ChevronRight size={18}/></button>
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-5 bg-zinc-900/95 border border-zinc-800 p-5 rounded-[2rem] shadow-2xl backdrop-blur-2xl">
+            <button onClick={()=>setZoom(Math.max(0.1, zoom-0.1))} className="p-2 hover:bg-zinc-800 rounded-xl transition-colors"><ChevronLeft size={20}/></button>
+            <span className="text-sm font-black font-mono w-16 text-center text-zinc-500">{Math.round(zoom*100)}%</span>
+            <button onClick={()=>setZoom(Math.min(4, zoom+0.1))} className="p-2 hover:bg-zinc-800 rounded-xl transition-colors"><ChevronRight size={20}/></button>
             <div className="w-px h-8 bg-zinc-800 mx-2" />
-            <button onClick={()=>setShowGrid(!showGrid)} className={`p-2.5 rounded-xl transition-all ${showGrid?'text-cyan-400 bg-cyan-400/10 ring-1 ring-cyan-400/30':'text-zinc-500 hover:text-white'}`} title="Mostrar Rejilla">
-              <Grid3X3 size={24}/>
+            <button onClick={()=>setShowGrid(!showGrid)} className={`p-3 rounded-2xl transition-all ${showGrid?'text-cyan-400 bg-cyan-400/10 ring-1 ring-cyan-400/30':'text-zinc-600 hover:text-white'}`}>
+              <Grid3X3 size={26}/>
             </button>
           </div>
         </section>
 
-        {/* PANEL LATERAL DERECHO */}
-        <aside className="w-80 border-l border-zinc-900 bg-zinc-900/30 flex flex-col p-8 gap-10 overflow-y-auto">
+        {/* PANEL DERECHO */}
+        <aside className="w-80 border-l border-zinc-900 bg-zinc-900/40 flex flex-col p-8 gap-10 overflow-y-auto">
            <section>
-             <h3 className="text-[11px] font-black uppercase text-zinc-500 mb-5 tracking-widest flex items-center gap-2"><Settings2 size={14}/> Configuración</h3>
+             <h3 className="text-[12px] font-black uppercase text-zinc-500 mb-6 tracking-[0.2em] flex items-center gap-3"><Settings2 size={16}/> Ajustes</h3>
              <div className="grid grid-cols-2 gap-3">
                {[16, 32, 64, 128].map(s => (
                  <button 
                    key={s} 
-                   onClick={() => { if(confirm(`¿Cambiar tamaño a ${s}x${s}? El progreso actual se perderá.`)) setProject(createDefaultProject(s)) }} 
-                   className={`p-4 rounded-2xl border text-[12px] font-black transition-all ${project.width===s ? 'border-cyan-500 text-cyan-500 bg-cyan-500/5 shadow-lg shadow-cyan-500/10':'border-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-white bg-zinc-900/40'}`}
+                   onClick={() => { if(confirm(`¿Deseas cambiar el tamaño a ${s}x${s}?`)) setProject(createDefaultProject(s)) }} 
+                   className={`p-4 rounded-2xl border-2 text-[14px] font-black transition-all ${project.width===s ? 'border-cyan-500 text-cyan-400 bg-cyan-500/5 shadow-[0_0_20px_rgba(6,182,212,0.1)]':'border-zinc-800 text-zinc-600 hover:border-zinc-600 bg-zinc-950/50'}`}
                  >
                    {s}x{s}
                  </button>
@@ -320,21 +332,21 @@ const App: React.FC = () => {
            </section>
 
            <section>
-             <h3 className="text-[11px] font-black uppercase text-zinc-500 mb-5 tracking-widest flex items-center gap-2"><MonitorPlay size={14}/> Previsualización</h3>
-             <div className="aspect-square w-full bg-zinc-950 rounded-3xl border border-zinc-800 flex items-center justify-center overflow-hidden dark-pixel-grid relative group">
+             <h3 className="text-[12px] font-black uppercase text-zinc-500 mb-6 tracking-[0.2em] flex items-center gap-3"><MonitorPlay size={16}/> Animación</h3>
+             <div className="aspect-square w-full bg-zinc-950 rounded-[2.5rem] border border-zinc-800 flex items-center justify-center overflow-hidden dark-pixel-grid relative group shadow-inner">
                 <canvas ref={previewRef} width={512} height={512} className="w-4/5 h-4/5 image-render-pixel" />
-                {!isPlaying && <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/20 transition-colors"><Play size={32} className="text-white opacity-40"/></div>}
+                {!isPlaying && <div className="absolute inset-0 flex items-center justify-center bg-black/50 transition-colors group-hover:bg-black/30"><Play size={40} className="text-white opacity-40"/></div>}
              </div>
-             <div className="mt-6 flex flex-col gap-4">
+             <div className="mt-8 flex flex-col gap-5">
                <button 
                 onClick={()=>setIsPlaying(!isPlaying)} 
-                className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${isPlaying ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-cyan-600 text-zinc-950 hover:bg-cyan-500 shadow-xl shadow-cyan-500/20'}`}
+                className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${isPlaying ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20' : 'bg-cyan-500 text-zinc-950 hover:bg-cyan-400 shadow-xl shadow-cyan-500/20'}`}
                >
-                 {isPlaying ? <><Pause size={18}/> Detener</> : <><Play size={18}/> Reproducir</>}
+                 {isPlaying ? <><Pause size={20}/> Detener</> : <><Play size={20}/> Reproducir</>}
                </button>
-               <div className="flex flex-col gap-2 bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800">
+               <div className="flex flex-col gap-3 bg-zinc-950/50 p-5 rounded-3xl border border-zinc-800">
                  <div className="flex items-center justify-between mb-1">
-                   <span className="text-[10px] text-zinc-500 font-black uppercase flex items-center gap-1.5"><Sliders size={12}/> Velocidad</span>
+                   <span className="text-[10px] text-zinc-600 font-black uppercase tracking-widest">Velocidad</span>
                    <span className="text-xs font-mono font-black text-cyan-400">{project.fps} FPS</span>
                  </div>
                  <input type="range" min="1" max="60" value={project.fps} onChange={e=>setProject(p=>({...p, fps:parseInt(e.target.value)}))} className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
@@ -344,33 +356,33 @@ const App: React.FC = () => {
         </aside>
       </main>
 
-      {/* TIMELINE / FOOTER */}
-      <footer className="h-40 border-t border-zinc-900 flex items-center px-10 bg-zinc-900/50 gap-8 overflow-hidden">
-        <div className="flex flex-col items-center gap-2 flex-none group">
+      {/* TIMELINE */}
+      <footer className="h-44 border-t border-zinc-900 flex items-center px-12 bg-zinc-900/60 backdrop-blur-xl gap-10 overflow-hidden">
+        <div className="flex flex-col items-center gap-3 flex-none group">
           <button 
             onClick={() => setProject(p => ({...p, frames: [...p.frames, {id: `f-${Date.now()}`, data: [...currentFrame.data]}], currentFrameIndex: p.frames.length}))} 
-            className="w-16 h-16 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-500 group-hover:text-white group-hover:bg-zinc-700 transition-all shadow-lg active:scale-90"
+            className="w-20 h-20 rounded-3xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-600 group-hover:text-white transition-all shadow-xl active:scale-90"
           >
-            <Plus size={32} />
+            <Plus size={36} />
           </button>
-          <span className="text-[9px] font-black text-zinc-600 uppercase tracking-tighter group-hover:text-zinc-400">Duplicar</span>
+          <span className="text-[10px] font-black text-zinc-600 uppercase tracking-tighter">Duplicar</span>
         </div>
         
-        <div className="flex-1 flex gap-5 overflow-x-auto py-6 scrollbar-hide">
+        <div className="flex-1 flex gap-6 overflow-x-auto py-8 scrollbar-hide">
           {project.frames.map((f, i) => (
             <div 
               key={f.id} 
               onClick={() => setProject(p => ({...p, currentFrameIndex: i}))}
-              className={`w-24 h-24 rounded-2xl border-2 flex-none cursor-pointer overflow-hidden transition-all relative ${project.currentFrameIndex === i ? 'border-cyan-500 scale-110 shadow-2xl shadow-cyan-500/20 z-10' : 'border-zinc-800 opacity-40 grayscale hover:opacity-100 grayscale-0'}`}
+              className={`w-28 h-28 rounded-3xl border-2 flex-none cursor-pointer overflow-hidden transition-all relative ${project.currentFrameIndex === i ? 'border-cyan-500 scale-110 shadow-2xl shadow-cyan-500/30 z-10' : 'border-zinc-800 opacity-50 hover:opacity-100'}`}
             >
-              <span className="absolute top-2 left-2 text-[10px] font-black bg-black/70 px-2 py-0.5 rounded-md z-20 border border-white/10">{i+1}</span>
+              <span className="absolute top-2.5 left-2.5 text-[11px] font-black bg-black/80 px-2.5 py-1 rounded-lg z-20 border border-white/5">{i+1}</span>
               <FramePreview frame={f} width={project.width} />
               {project.frames.length > 1 && project.currentFrameIndex === i && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); setProject(p => ({...p, frames: p.frames.filter((_, idx)=>idx!==i), currentFrameIndex: Math.max(0, i-1)})); }} 
-                  className="absolute bottom-2 right-2 bg-red-600 p-2 rounded-xl text-white hover:bg-red-500 transition-all shadow-xl active:scale-90"
+                  className="absolute bottom-2.5 right-2.5 bg-red-600/90 p-2.5 rounded-xl text-white hover:bg-red-500 transition-all shadow-xl active:scale-90"
                 >
-                  <Trash2 size={14}/>
+                  <Trash2 size={16}/>
                 </button>
               )}
             </div>
@@ -380,57 +392,57 @@ const App: React.FC = () => {
 
       {/* MODAL IA */}
       {isAiModalOpen && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-[2.5rem] p-10 animate-in zoom-in-95 shadow-[0_0_100px_rgba(147,51,234,0.15)]">
-             <div className="flex justify-between items-center mb-8">
-               <div className="flex flex-col">
-                 <h2 className="text-2xl font-black flex items-center gap-3"><Sparkles className="text-purple-500" /> GENERADOR IA</h2>
-                 <p className="text-zinc-500 text-xs mt-1">Describe tu personaje y la IA lo dibujará píxel a píxel.</p>
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/95 backdrop-blur-3xl animate-in fade-in duration-300">
+          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-xl rounded-[3rem] p-12 animate-in zoom-in-95 duration-300 shadow-[0_0_100px_rgba(147,51,234,0.15)]">
+             <div className="flex justify-between items-start mb-10">
+               <div className="flex flex-col gap-1">
+                 <h2 className="text-3xl font-black flex items-center gap-4 text-purple-400"><Sparkles size={32}/> Generar con IA</h2>
+                 <p className="text-zinc-500 text-sm font-medium tracking-wide">La IA de Gemini dibujará tus personajes por ti.</p>
                </div>
-               <button onClick={()=>setIsAiModalOpen(false)} className="text-zinc-500 hover:text-white bg-zinc-800 p-2 rounded-full transition-colors"><X size={20}/></button>
+               <button onClick={()=>setIsAiModalOpen(false)} className="text-zinc-500 hover:text-white bg-zinc-800 p-3 rounded-full transition-transform hover:rotate-90"><X size={24}/></button>
              </div>
 
              {errorLog && (
-               <div className="mb-6 bg-red-500/10 border border-red-500/30 p-4 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-                 <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={18} />
-                 <div className="flex flex-col">
-                   <p className="text-xs font-bold text-red-500">Error de Conexión / IA</p>
-                   <p className="text-[11px] text-red-400/80 leading-relaxed mt-1">{errorLog}</p>
+               <div className="mb-8 bg-red-500/10 border-l-4 border-red-500 p-6 rounded-2xl flex items-start gap-4 animate-in slide-in-from-top-4">
+                 <AlertCircle className="text-red-500 shrink-0 mt-1" size={24} />
+                 <div className="flex flex-col gap-1">
+                    <p className="text-sm font-black text-red-500 uppercase tracking-tighter">Problema de Conexión</p>
+                    <p className="text-xs text-red-400/80 leading-relaxed font-medium">{errorLog}</p>
                  </div>
                </div>
              )}
 
-             <div className="relative mb-8">
+             <div className="relative mb-10">
                <textarea 
-                 className="w-full bg-black border-2 border-zinc-800 rounded-3xl p-6 text-sm min-h-[160px] outline-none focus:border-purple-500/50 transition-all placeholder-zinc-700 text-white resize-none shadow-inner"
-                 placeholder="Ej: Un dragón verde miniatura estilo GameBoy Color, caminando hacia la derecha..."
+                 className="w-full bg-zinc-950 border-2 border-zinc-800 rounded-[2rem] p-8 text-base min-h-[180px] outline-none focus:border-purple-600/50 transition-all text-white resize-none shadow-inner font-medium placeholder-zinc-800"
+                 placeholder="Ej: Un ninja cibernético con luces rojas, vista lateral, estilo 16 bits..."
                  value={aiPrompt}
                  onChange={e=>setAiPrompt(e.target.value)}
                  disabled={isGenerating}
                />
-               <div className="absolute bottom-4 right-6 text-[10px] font-black text-zinc-600 uppercase tracking-widest">GEMINI ENGINE</div>
+               <div className="absolute bottom-6 right-8 text-[10px] font-black text-zinc-700 uppercase tracking-[0.3em]">IA Engine v2.5</div>
              </div>
 
              <button 
                onClick={generateWithAi}
                disabled={isGenerating || !aiPrompt}
-               className={`w-full py-5 rounded-3xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-2xl ${isGenerating || !aiPrompt ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30 active:scale-95'}`}
+               className={`w-full py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 shadow-2xl ${isGenerating || !aiPrompt ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/40 active:scale-[0.98]'}`}
              >
                {isGenerating ? (
                  <>
-                   <Loader2 className="animate-spin" />
-                   <span className="animate-pulse">GENIANDO PÍXELES...</span>
+                    <Loader2 className="animate-spin" size={24} />
+                    <span className="animate-pulse">Procesando Píxeles...</span>
                  </>
                ) : (
                  <>
-                   <Sparkles size={18}/>
-                   DIBUJAR AHORA
+                    <Sparkles size={24}/>
+                    Dibujar Sprite
                  </>
                )}
              </button>
              
-             <p className="text-[10px] text-zinc-600 mt-6 text-center font-bold tracking-tight">
-               NOTA: El resultado se aplicará al frame seleccionado actualmente.
+             <p className="text-[11px] text-zinc-600 mt-8 text-center font-bold tracking-tight uppercase opacity-50">
+               El resultado reemplazará el contenido del frame actual.
              </p>
           </div>
         </div>
@@ -442,7 +454,7 @@ const App: React.FC = () => {
 const ToolBtn = ({icon, active, onClick}: any) => (
   <button 
     onClick={onClick} 
-    className={`p-4 rounded-2xl transition-all duration-300 transform active:scale-90 ${active ? 'bg-cyan-600 text-zinc-950 shadow-[0_0_20px_rgba(6,182,212,0.4)] scale-110 z-10' : 'text-zinc-500 hover:text-white hover:bg-zinc-800'}`}
+    className={`p-5 rounded-[1.5rem] transition-all duration-500 transform active:scale-75 ${active ? 'bg-cyan-500 text-zinc-950 shadow-[0_0_30px_rgba(6,182,212,0.4)] scale-110 z-10' : 'text-zinc-600 hover:text-white hover:bg-zinc-800'}`}
   >
     {icon}
   </button>
@@ -462,7 +474,7 @@ const FramePreview = ({frame, width}: {frame: Frame, width: number}) => {
       }
     });
   }, [frame, width]);
-  return <canvas ref={canvasRef} width={128} height={128} className="w-full h-full image-render-pixel pointer-events-none" />;
+  return <canvas ref={canvasRef} width={160} height={160} className="w-full h-full image-render-pixel pointer-events-none" />;
 }
 
 export default App;
